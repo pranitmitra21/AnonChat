@@ -23,6 +23,22 @@ AnonChat is a privacy-first real-time messaging application designed for instant
 *   **Security:** Helmet.js, Rate Limiting
 *   **Storage:** IPFS (Helia)
 
+## 📋 Prerequisites
+
+Before running this project, ensure you have the following installed:
+
+*   **[Node.js](https://nodejs.org/):** Version 16.x or higher (LTS recommended)
+*   **npm:** Node Package Manager (comes with Node.js)
+
+## 📦 Dependencies
+
+The project relies on the following key packages:
+
+*   **[Express](https://expressjs.com/):** Web framework for Node.js.
+*   **[Socket.io](https://socket.io/):** Enables real-time, bidirectional communication.
+*   **[Helmet](https://helmetjs.github.io/):** Helps secure Express apps by setting HTTP response headers.
+*   **[Express Rate Limit](https://www.npmjs.com/package/express-rate-limit):** Basic rate-limiting middleware to prevent brute-force attacks.
+
 ## 📦 Installation & Setup
 
 1.  **Clone the repository:**
