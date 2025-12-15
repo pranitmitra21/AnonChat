@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnonChat</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js?v=2" type="module" defer></script>
+</head>
+
+<body>
+
+    <!-- Landing Page -->
+    <div id="landing-page" class="landing-page">
+        <!-- Particle/Matrix Background -->
+        <div class="particles"></div>
+
+        <header class="landing-header">
+            <div class="logo">
+                <img src="favicon.png" alt="AnonChat" class="logo-icon"
+                    style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px; filter: drop-shadow(0 0 8px rgba(0, 245, 255, 0.6));">
+                <span>AnonChat</span>
+            </div>
+            <div class="privacy-badge">
+                <span>🔒</span> End-to-End Encrypted
+            </div>
+            <div class="privacy-badge" id="ipfs-status-badge" style="display: none;">
+                <span>📡</span> <span id="ipfs-status-text">IPFS Initializing...</span>
+            </div>
+        </header>
+
+        <div class="landing-content">
+            <div class="login-card">
+                <!-- Anonymous Mask Avatar -->
+                <div class="avatar-container">
+                    <div class="masked-avatar">
+                        <img src="anonymous-mask.png" alt="Anonymous Mask"
+                            style="width: 180px; height: 180px; object-fit: contain; filter: drop-shadow(0 0 25px rgba(0, 245, 255, 0.5));">
+                    </div>
+                </div>
+
+                <h1>Enter Anonymously</h1>
+                <p class="tagline">🛡️ No Registration Required</p>
+                <p class="subtitle">Your identity stays private. No emails. No passwords. Just chat.</p>
+
+                <div class="login-form">
+                    <div class="input-wrapper">
+                        <input type="text" id="username-input" placeholder="Choose a nickname (optional)"
+                            maxlength="15">
+                        <span class="privacy-hint">🔐 Auto-encrypted ID will be generated</span>
+                    </div>
+                    <button id="login-btn" class="enter-btn">
+                        <span class="btn-icon">👤</span>
+                        Enter as Guest
+                        <span class="btn-glow"></span>
+                    </button>
+                    <div id="login-error" class="error-msg"></div>
+                </div>
+
+                <!-- Security Badges -->
+                <div class="security-badges">
+                    <div class="badge">
+                        <span>🔒</span>
+                        <small>Encrypted</small>
+                    </div>
+                    <div class="badge">
+                        <span>👻</span>
+                        <small>Anonymous</small>
+                    </div>
+                    <div class="badge">
+                        <span>⚡</span>
+                        <small>Instant</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <div class="feature-block">
+                <div class="feature-icon">🔐</div>
+                <h3>Zero-Knowledge Privacy</h3>
+                <p>We don't store your data. Everything stays on your device.</p>
+                <div class="feature-tech">
+                    <span class="tech-badge">AES-256</span>
+                    <span class="tech-badge">E2EE</span>
+                </div>
+            </div>
+            <div class="feature-block">
+                <div class="feature-icon">⚡</div>
+                <h3>Instant Connection</h3>
+                <p>No sign-up delays. Start chatting in seconds.</p>
+                <div class="feature-tech">
+                    <span class="tech-badge">WebSocket</span>
+                    <span class="tech-badge">Real-time</span>
+                </div>
+            </div>
+            <div class="feature-block">
+                <div class="feature-icon">👻</div>
+                <h3>True Anonymity</h3>
+                <p>No email, no phone, no tracking. Pure anonymous chat.</p>
+                <div class="feature-tech">
+                    <span class="tech-badge">No Cookies</span>
+                    <span class="tech-badge">No Logs</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-page" class="dashboard-page hidden">
+        <!-- Left Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="resizer" id="sidebar-resizer"></div>
+            <div class="app-title">
+                <div class="logo-area">
+                    <img src="favicon.png" alt="AnonChat" class="logo-icon-small"
+                        style="width: 24px; height: 24px; filter: drop-shadow(0 0 6px rgba(0, 245, 255, 0.5));">
+                    <span class="app-name">AnonChat</span>
+                </div>
+                <button id="sidebar-toggle" class="icon-btn" title="Toggle Sidebar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Minimized Sidebar Trigger -->
+            <div id="minimized-chat-trigger" class="minimized-trigger" title="Show Chats">
+                <div class="trigger-icon-container">
+                    <span class="trigger-icon">💬</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <h4>Appearance</h4>
+                    <div id="theme-toggle" class="nav-item">
+                        <span class="theme-icon">☀️</span> Light Mode
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <h4>Chat list</h4>
+                    <ul id="group-list">
+                        <li class="group-item active" data-room="Public Group">Public Group</li>
+                        <li class="group-item" data-room="Gaming Group">Gaming Group</li>
+                        <li class="group-item" data-room="Tech Group">Tech Group</li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h4>Direct Messages</h4>
+                    <ul id="dm-list">
+                        <!-- DMs will appear here -->
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h4>Private Groups</h4>
+                    <button id="create-group-btn" class="action-btn">
+                        <span>+</span> Create Private Group
+                    </button>
+                </div>
+
+                <div class="invite-section">
+                    <h4>Join Chat</h4>
+                    <div class="invite-input-group">
+                        <input type="text" id="friend-id-input" placeholder="User#ID or Group#ID">
+                        <button id="invite-btn">Join</button>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="user-profile">
+                <div class="avatar">👤</div>
+                <div class="user-info">
+                    <div id="current-user-id" class="user-id">Loading...</div>
+                    <div class="status-row">
+                        <div class="status"><span class="green-dot"></span> Online</div>
+                        <button id="logout-btn" class="logout-btn" title="Logout" onclick="appLogout()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Chat Area -->
+        <main class="chat-area">
+            <header class="chat-header">
+                <div>
+                    <h2 id="current-chat-title">Public Group</h2>
+                    <small id="ipfs-status-indicator" style="color: #888; font-size: 0.75rem; display: none;">
+                        <span id="ipfs-icon">📡</span> <span id="ipfs-text">IPFS Active</span>
+                    </small>
+                </div>
+                <div class="chat-actions">
+                    <button class="icon-btn">★</button>
+                    <button class="icon-btn">⋮</button>
+                </div>
+            </header>
+
+            <div id="message-container" class="message-container">
+                <!-- Messages will appear here -->
+                <div class="message system-message">Welcome to AnonChat!</div>
+            </div>
+
+            <div class="message-input-area">
+                <button id="emoji-btn" class="emoji-btn" title="Emojis">😊</button>
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button id="send-btn">➤</button>
+
+                <!-- Emoji Picker Panel -->
+                <div id="emoji-picker" class="emoji-picker hidden">
+                    <div class="emoji-grid">
+                        <span class="emoji-item">😀</span>
+                        <span class="emoji-item">😂</span>
+                        <span class="emoji-item">😊</span>
+                        <span class="emoji-item">😍</span>
+                        <span class="emoji-item">🥰</span>
+                        <span class="emoji-item">😎</span>
+                        <span class="emoji-item">🤔</span>
+                        <span class="emoji-item">😢</span>
+                        <span class="emoji-item">😭</span>
+                        <span class="emoji-item">😡</span>
+                        <span class="emoji-item">🤯</span>
+                        <span class="emoji-item">🥳</span>
+                        <span class="emoji-item">😴</span>
+                        <span class="emoji-item">🤐</span>
+                        <span class="emoji-item">😱</span>
+                        <span class="emoji-item">👍</span>
+                        <span class="emoji-item">👎</span>
+                        <span class="emoji-item">👏</span>
+                        <span class="emoji-item">🙌</span>
+                        <span class="emoji-item">🤝</span>
+                        <span class="emoji-item">❤️</span>
+                        <span class="emoji-item">💔</span>
+                        <span class="emoji-item">🔥</span>
+                        <span class="emoji-item">✨</span>
+                        <span class="emoji-item">💯</span>
+                        <span class="emoji-item">🎉</span>
+                        <span class="emoji-item">🎊</span>
+                        <span class="emoji-item">🎈</span>
+                        <span class="emoji-item">🎁</span>
+                        <span class="emoji-item">⚡</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+</body>
+
+</html>
