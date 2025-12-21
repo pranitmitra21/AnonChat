@@ -135,7 +135,63 @@ body.light-mode .action-btn:hover {
 
 body {
     height: 100vh;
+    /* Fallback */
+    height: 100dvh;
+    /* Mobile Fix */
     overflow: hidden;
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    backdrop-filter: blur(2px);
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+
+    /* Hide Sidebar by default on mobile */
+    .sidebar {
+        position: absolute;
+        height: 100%;
+        width: 85%;
+        max-width: 300px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 100;
+        background-color: var(--sidebar-bg);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* When 'active' (via JS class we will add), it slides in */
+    .sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Override standard 'collapsed' behavior for mobile to be fully hidden */
+    .sidebar.collapsed {
+        width: 0 !important;
+        padding: 0 !important;
+        transform: translateX(-100%);
+        display: none !important;
+    }
+
+    /* Chat Area Full Width */
+    .chat-area {
+        width: 100%;
+        min-width: 100%;
+    }
 }
 
 .hidden {
@@ -569,6 +625,8 @@ body {
 .dashboard-page {
     display: flex;
     height: 100vh;
+    height: 100dvh;
+    /* Mobile Fix */
     background-color: var(--dark-bg);
     /* Subtle Gradient Mesh for Glass Effect */
     background-image:
@@ -659,7 +717,8 @@ body {
 
 /* Minimized Trigger (Chats Icon) */
 .minimized-trigger {
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
     justify-content: center;
     margin-top: 2rem;
     cursor: pointer;
@@ -667,7 +726,8 @@ body {
 }
 
 .sidebar.collapsed .minimized-trigger {
-    display: flex; /* Show only when collapsed */
+    display: flex;
+    /* Show only when collapsed */
 }
 
 .trigger-icon-container {
@@ -1146,60 +1206,243 @@ body.light-mode .message.received {
     border-color: rgba(168, 85, 247, 0.3);
     background: rgba(168, 85, 247, 0.1);
     color: #a855f7;
-}/ *   U t i l i t y   C l a s s   * / 
+}
+
 /* Utility Class */
 .hidden {
     display: none !important;
 }
+
 /* --- Sidebar Modification Overrides --- */
-.sidebar.collapsed { width: 80px !important; }
-.sidebar.collapsed .app-name, .sidebar.collapsed .sidebar-nav, .sidebar.collapsed .user-info, .sidebar.collapsed .invite-section, .sidebar.collapsed .user-profile, .sidebar.collapsed #sidebar-toggle { display: none !important; }
-.sidebar.collapsed .logo-area { justify-content: center !important; width: 100% !important; padding: 0 !important; }
-.sidebar.collapsed .logo-icon-small { margin: 0 !important; width: 32px !important; height: 32px !important; }
-.minimized-trigger { display: none; justify-content: center; margin-top: 2rem; cursor: pointer; animation: fadeIn 0.3s ease; }
-.sidebar.collapsed .minimized-trigger { display: flex !important; }
-.trigger-icon-container { width: 48px; height: 48px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: all 0.2s ease; border: 1px solid rgba(255, 255, 255, 0.1); }
-.trigger-icon-container:hover { background: rgba(0, 245, 255, 0.2); border-color: #00f5ff; transform: scale(1.1); box-shadow: 0 0 15px rgba(0, 245, 255, 0.3); }
+.sidebar.collapsed {
+    width: 80px !important;
+}
+
+.sidebar.collapsed .app-name,
+.sidebar.collapsed .sidebar-nav,
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .invite-section,
+.sidebar.collapsed .user-profile,
+.sidebar.collapsed #sidebar-toggle {
+    display: none !important;
+}
+
+.sidebar.collapsed .logo-area {
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+.sidebar.collapsed .logo-icon-small {
+    margin: 0 !important;
+    width: 32px !important;
+    height: 32px !important;
+}
+
+.minimized-trigger {
+    display: none;
+    justify-content: center;
+    margin-top: 2rem;
+    cursor: pointer;
+    animation: fadeIn 0.3s ease;
+}
+
+.sidebar.collapsed .minimized-trigger {
+    display: flex !important;
+}
+
+.trigger-icon-container {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trigger-icon-container:hover {
+    background: rgba(0, 245, 255, 0.2);
+    border-color: #00f5ff;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+}
 
 /* Circular Logo Override */
-.logo-icon-small { border-radius: 50%; object-fit: cover; }
+.logo-icon-small {
+    border-radius: 50%;
+    object-fit: cover;
+}
 
 /* Layout Optimization Overrides */
-.landing-page { padding: 1rem !important; padding-bottom: 2rem !important; }
-.landing-header { margin-bottom: 1rem !important; }
-.login-card { padding: 2rem !important; }
-.avatar-container { margin-bottom: 1rem !important; }
-.login-card h1 { font-size: 2rem !important; margin-bottom: 0.5rem !important; }
-.tagline { margin-bottom: 0.8rem !important; }
-.subtitle { margin-bottom: 1.5rem !important; }
-.features-section { padding-top: 1rem !important; padding-bottom: 0.5rem !important; }
-.feature-block { padding: 1rem !important; }
-.feature-icon { font-size: 2rem !important; margin-bottom: 0.5rem !important; }
-.feature-block h3 { font-size: 1rem !important; margin-bottom: 0.3rem !important; }
-.feature-block p { font-size: 0.8rem !important; }
+.landing-page {
+    padding: 1rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.landing-header {
+    margin-bottom: 1rem !important;
+}
+
+.login-card {
+    padding: 2rem !important;
+}
+
+.avatar-container {
+    margin-bottom: 1rem !important;
+}
+
+.login-card h1 {
+    font-size: 2rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.tagline {
+    margin-bottom: 0.8rem !important;
+}
+
+.subtitle {
+    margin-bottom: 1.5rem !important;
+}
+
+.features-section {
+    padding-top: 1rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+.feature-block {
+    padding: 1rem !important;
+}
+
+.feature-icon {
+    font-size: 2rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.feature-block h3 {
+    font-size: 1rem !important;
+    margin-bottom: 0.3rem !important;
+}
+
+.feature-block p {
+    font-size: 0.8rem !important;
+}
 
 /* Matrix Animation Enhancements */
-.particles::before, .particles::after { width: 4px !important; opacity: 0.4 !important; filter: drop-shadow(0 0 8px cyan); background: linear-gradient(180deg, transparent, #00f5ff, transparent) !important; }
+.particles::before,
+.particles::after {
+    width: 4px !important;
+    opacity: 0.4 !important;
+    filter: drop-shadow(0 0 8px cyan);
+    background: linear-gradient(180deg, transparent, #00f5ff, transparent) !important;
+}
 
 /* --- FINAL CONSOLIDATED OVERRIDES --- */
 /* 1. Sidebar Collapsed State */
-.sidebar.collapsed { width: 80px !important; }
-.sidebar.collapsed .app-name, .sidebar.collapsed .sidebar-nav, .sidebar.collapsed .user-info, .sidebar.collapsed .invite-section, .sidebar.collapsed .user-profile, .sidebar.collapsed #sidebar-toggle { display: none !important; }
-.sidebar.collapsed .logo-area { justify-content: center !important; width: 100% !important; padding: 0 !important; }
-.sidebar.collapsed .logo-icon-small { margin: 0 !important; width: 32px !important; height: 32px !important; border-radius: 50% !important; object-fit: cover; }
+.sidebar.collapsed {
+    width: 80px !important;
+}
+
+.sidebar.collapsed .app-name,
+.sidebar.collapsed .sidebar-nav,
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .invite-section,
+.sidebar.collapsed .user-profile,
+.sidebar.collapsed #sidebar-toggle {
+    display: none !important;
+}
+
+.sidebar.collapsed .logo-area {
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+.sidebar.collapsed .logo-icon-small {
+    margin: 0 !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    object-fit: cover;
+}
+
 /* 2. Minimized Trigger */
-.minimized-trigger { display: none; justify-content: center; margin-top: 2rem; cursor: pointer; animation: fadeIn 0.3s ease; }
-.sidebar.collapsed .minimized-trigger { display: flex !important; }
-.trigger-icon-container { width: 48px; height: 48px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: all 0.2s ease; border: 1px solid rgba(255, 255, 255, 0.1); }
-.trigger-icon-container:hover { background: rgba(0, 245, 255, 0.2); border-color: #00f5ff; transform: scale(1.1); box-shadow: 0 0 15px rgba(0, 245, 255, 0.3); }
+.minimized-trigger {
+    display: none;
+    justify-content: center;
+    margin-top: 2rem;
+    cursor: pointer;
+    animation: fadeIn 0.3s ease;
+}
+
+.sidebar.collapsed .minimized-trigger {
+    display: flex !important;
+}
+
+.trigger-icon-container {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trigger-icon-container:hover {
+    background: rgba(0, 245, 255, 0.2);
+    border-color: #00f5ff;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+}
+
 /* 3. Login Page Layout Optimization */
-.landing-page { padding: 1rem !important; padding-bottom: 2rem !important; }
-.landing-header { margin-bottom: 1rem !important; }
-.login-card { padding: 2rem !important; }
-.avatar-container { margin-bottom: 1rem !important; }
-.login-card h1 { font-size: 2rem !important; margin-bottom: 0.5rem !important; }
-.tagline { margin-bottom: 0.8rem !important; }
-.subtitle { margin-bottom: 1.5rem !important; }
-.features-section { padding-top: 1rem !important; padding-bottom: 0.5rem !important; }
+.landing-page {
+    padding: 1rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.landing-header {
+    margin-bottom: 1rem !important;
+}
+
+.login-card {
+    padding: 2rem !important;
+}
+
+.avatar-container {
+    margin-bottom: 1rem !important;
+}
+
+.login-card h1 {
+    font-size: 2rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.tagline {
+    margin-bottom: 0.8rem !important;
+}
+
+.subtitle {
+    margin-bottom: 1.5rem !important;
+}
+
+.features-section {
+    padding-top: 1rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
 /* 4. Matrix Animation Enhancement */
-.particles::before, .particles::after { width: 4px !important; opacity: 0.4 !important; filter: drop-shadow(0 0 8px cyan); background: linear-gradient(180deg, transparent, #00f5ff, transparent) !important; }
+.particles::before,
+.particles::after {
+    width: 4px !important;
+    opacity: 0.4 !important;
+    filter: drop-shadow(0 0 8px cyan);
+    background: linear-gradient(180deg, transparent, #00f5ff, transparent) !important;
+}

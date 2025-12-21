@@ -1041,19 +1041,40 @@ function switchChat(type, id, title) {
     if (type === 'group') {
         socket.emit('joinRoom', id);
     }
+
+    // Mobile: Auto-close sidebar after selection
+    if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('mobile-open');
+        document.getElementById('sidebar-overlay').classList.remove('active');
+    }
 }
 
 // Sidebar Functionality
 const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
 const resizer = document.getElementById('sidebar-resizer');
 const toggleBtn = document.getElementById('sidebar-toggle');
 let isResizing = false;
 
 // Toggle
 toggleBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-    // Ensure button text rotates correctly via CSS
+    if (window.innerWidth <= 768) {
+        // Mobile behavior: Slide in/out
+        sidebar.classList.toggle('mobile-open');
+        sidebarOverlay.classList.toggle('active');
+    } else {
+        // Desktop behavior: Collapse/Expand
+        sidebar.classList.toggle('collapsed');
+    }
 });
+
+// Close sidebar on overlay click
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('mobile-open');
+        sidebarOverlay.classList.remove('active');
+    });
+}
 
 // Minimized Chat Trigger (Expand Sidebar)
 const minimizedTrigger = document.getElementById('minimized-chat-trigger');
