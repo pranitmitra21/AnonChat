@@ -949,8 +949,17 @@ inviteBtn.addEventListener('click', () => {
             alert("You cannot chat with yourself.");
             return;
         }
-        addPrivateChatToList(inputId, "Unknown");
-        switchChat('private', inputId, inputId);
+        // Determine chatKey (unique ID) as the target
+        const chatKey = inputId;
+        // FIX: Always use the chatKey (ID) as the Display Name
+        const PARTNER_NAME = chatKey;
+
+        addDMToList(chatKey, PARTNER_NAME);
+        switchChat('private', chatKey, PARTNER_NAME);
+
+        // Track Private Chat
+        privateChats.add(chatKey);
+        saveChatSession(); // SAVE
     }
     inviteInput.value = '';
 });
