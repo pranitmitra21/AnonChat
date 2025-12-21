@@ -449,6 +449,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
             // Auto Login
             await performLogin(session.username, session.id, session.keys);
+
+            // Restore History
+            restoreChatSession();
         } catch (e) {
             console.error("Failed to restore session", e);
             sessionStorage.removeItem('anonSession');
@@ -489,6 +492,48 @@ socket.on('loginSuccess', async (userData) => {
     // Phase 3: Start Anonymity Traffic
     startDummyTraffic();
 });
+
+// --- PERSISTENCE HELPERS ---
+function saveChatSession() {
+    // Save Message History
+    sessionStorage.setItem('anonHistory', JSON.stringify(chatHistory));
+
+    // Save DM List (Set -> Array)
+    sessionStorage.setItem('anonDMs', JSON.stringify(Array.from(privateChats)));
+}
+
+function restoreChatSession() {
+    try {
+        const savedHistory = sessionStorage.getItem('anonHistory');
+        const savedDMs = sessionStorage.getItem('anonDMs');
+
+        if (savedHistory) {
+            const parsed = JSON.parse(savedHistory);
+            Object.assign(chatHistory, parsed); // Merge into main object
+            console.log("Restored history for:", Object.keys(chatHistory));
+        }
+
+        if (savedDMs) {
+            const parsed = JSON.parse(savedDMs);
+            parsed.forEach(id => {
+                privateChats.add(id);
+                // We don't know the name from just the ID list, 
+                // but we can try to find it in the history if available
+                let name = id;
+                if (chatHistory[id] && chatHistory[id].length > 0) {
+                    // Find a message where sender is NOT us to get their name
+                    const msg = chatHistory[id].find(m => m.senderId === id);
+                    if (msg) name = msg.senderName;
+                }
+                // If we still don't have a name, use ID (consistent with previous fix)
+                addDMToList(id, name === id ? id : name);
+            });
+        }
+    } catch (e) {
+        console.error("Failed to restore chat history:", e);
+    }
+}
+
 
 socket.on('error', (msg) => {
     alert(msg);
@@ -569,6 +614,10 @@ async function handleIncomingMessage(msg) {
 
         addDMToList(chatKey, PARTNER_NAME);
 
+        // Track Private Chat
+        privateChats.add(chatKey);
+        saveChatSession(); // SAVE
+
         if (currentContext.type === 'private' && currentContext.id === chatKey) {
             if (!finalMsg.self) addMessage(finalMsg);
         } else {
@@ -593,6 +642,9 @@ async function handleIncomingMessage(msg) {
         if (currentContext.type === 'group' && currentContext.id === finalMsg.room) {
             addMessage(finalMsg);
         }
+
+        // Save public/group history too? Maybe heavier, but useful.
+        saveChatSession();
     }
 }
 
@@ -739,6 +791,9 @@ async function sendMessage() {
             // Save to history self
             if (!chatHistory[recipientId]) chatHistory[recipientId] = [];
             chatHistory[recipientId].push(sentMsg);
+
+            privateChats.add(recipientId);
+            saveChatSession(); // SAVE
 
 
             const payload = {
