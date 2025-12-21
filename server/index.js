@@ -115,7 +115,7 @@ io.on('connection', (socket) => {
 
         const msgData = {
             senderId: sender.id,
-            senderName: sender.username,
+            senderName: sender.id, // Changed from sender.username to sender.id for public accountability
             text: message,
             ipfsCid: ipfsCid, // Relay IPFS CID
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
