@@ -43,13 +43,21 @@ function generateId(username) {
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('login', ({ username, publicKey }) => {
-        // Fallback for old clients or simple string (though we changed client)
+    socket.on('login', ({ username, publicKey, existingId }) => {
+        // Fallback for old clients or simple string
         if (typeof username === 'object') {
-            // Handle if just username was passed by mistake, but we expect object now
+            // Handle if just username was passed by mistake
         }
 
-        const uniqueId = generateId(username);
+        // 1. Try to restore session if ID provided
+        let uniqueId = existingId;
+
+        // Validate existing ID format (Username#XXXXX)
+        if (!uniqueId || !uniqueId.startsWith(username + '#')) {
+            uniqueId = generateId(username);
+        }
+
+        // 2. Store user
         users[socket.id] = {
             id: uniqueId,
             username: username,
@@ -68,7 +76,7 @@ io.on('connection', (socket) => {
         socket.emit('history', groups['Public Group']);
 
         io.emit('userCount', Object.keys(users).length);
-        console.log(`User logged in: ${uniqueId}`);
+        console.log(`User logged in: ${uniqueId} (Restored: ${!!existingId})`);
     });
 
     socket.on('joinRoom', (roomName) => {
@@ -136,6 +144,14 @@ io.on('connection', (socket) => {
         console.log('User disconnected:', socket.id);
         delete users[socket.id];
         io.emit('userCount', Object.keys(users).length);
+    });
+
+    // WebRTC Signaling Relay
+    socket.on('signal', ({ to, signal }) => {
+        const targetSocketId = Object.keys(users).find(key => users[key].id === to);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('signal', { from: users[socket.id].id, signal });
+        }
     });
 });
 

@@ -166,6 +166,35 @@ const Crypto = {
         console.log("Crypto: Key Pair Generated");
     },
 
+    async exportSessionKeys() {
+        if (!this.keyPair) return null;
+        const pub = await window.crypto.subtle.exportKey("spki", this.keyPair.publicKey);
+        const priv = await window.crypto.subtle.exportKey("pkcs8", this.keyPair.privateKey);
+        return {
+            publicKey: this.arrayBufferToBase64(pub),
+            privateKey: this.arrayBufferToBase64(priv)
+        };
+    },
+
+    async importSessionKeys(keys) {
+        const pubKey = await window.crypto.subtle.importKey(
+            "spki",
+            this.base64ToArrayBuffer(keys.publicKey),
+            { name: "ECDH", namedCurve: "P-256" },
+            true,
+            []
+        );
+        const privKey = await window.crypto.subtle.importKey(
+            "pkcs8",
+            this.base64ToArrayBuffer(keys.privateKey),
+            { name: "ECDH", namedCurve: "P-256" },
+            true,
+            ["deriveKey", "deriveBits"]
+        );
+        this.keyPair = { publicKey: pubKey, privateKey: privKey };
+        console.log("Crypto: Keys Restored from Session");
+    },
+
     async getPublicKeyBase64() {
         if (!this.keyPair) await this.init();
         const exportKey = await window.crypto.subtle.exportKey("spki", this.keyPair.publicKey);
@@ -258,37 +287,195 @@ const Crypto = {
     }
 };
 
-// Login Logic
-loginBtn.addEventListener('click', async () => {
-    const username = usernameInput.value.trim();
-    if (username.length < 3) {
-        loginError.textContent = "Username must be at least 3 characters.";
-        return;
-    }
+// --- WEBRTC MODULE (Native) ---
+const WebRTC = {
+    peers: {}, // userId -> { conn: RTCPeerConnection, channel: RTCDataChannel }
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+    },
 
+    initPeer(targetId, initiator) {
+        if (this.peers[targetId]) return this.peers[targetId];
+
+        const conn = new RTCPeerConnection(this.config);
+        const peer = { conn, channel: null, buffer: [] };
+        this.peers[targetId] = peer;
+
+        conn.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('signal', { to: targetId, signal: { candidate: event.candidate } });
+            }
+        };
+
+        conn.onconnectionstatechange = () => {
+            console.log(`WebRTC ${targetId}: ${conn.connectionState}`);
+            if (conn.connectionState === 'disconnected' || conn.connectionState === 'failed') {
+                this.closePeer(targetId);
+            }
+        };
+
+        if (initiator) {
+            // Initiator creates data channel
+            const channel = conn.createDataChannel("chat");
+            this.setupChannel(channel, peer, targetId);
+
+            conn.createOffer()
+                .then(offer => conn.setLocalDescription(offer))
+                .then(() => {
+                    socket.emit('signal', { to: targetId, signal: { sdp: conn.localDescription } });
+                });
+        } else {
+            // Receiver waits for data channel
+            conn.ondatachannel = (event) => {
+                this.setupChannel(event.channel, peer, targetId);
+            };
+        }
+
+        return peer;
+    },
+
+    setupChannel(channel, peer, targetId) {
+        peer.channel = channel;
+        channel.onopen = () => {
+            console.log(`WebRTC Channel Open: ${targetId}`);
+            // Flush buffer?
+        };
+        channel.onmessage = (event) => {
+            console.log("WebRTC msg:", event.data);
+            const msg = JSON.parse(event.data);
+            // Inject into chat flow
+            if (msg.type === 'chat') {
+                // Simulate socket receive
+                // We need to construct the msg object expected by UI
+                // msg payload: { senderId, senderName, text, time, room, isPrivate: true, isSecure... }
+                // The sender sent us the raw 'msgData' from sendMessage.
+                // We need to wrap it or handle it.
+                // Let's assume sender sends exact same object as socket 'receiveMessage'
+                onReceiveMessage(msg.payload);
+            }
+        };
+    },
+
+    handleSignal(fromId, signal) {
+        // If we don't have peer, we are receiver
+        const isInitiator = !!this.peers[fromId];
+        const peer = this.initPeer(fromId, false);
+        const { conn } = peer;
+
+        if (signal.sdp) {
+            conn.setRemoteDescription(new RTCSessionDescription(signal.sdp))
+                .then(() => {
+                    if (signal.sdp.type === 'offer') {
+                        return conn.createAnswer();
+                    }
+                })
+                .then(answer => {
+                    if (answer) {
+                        return conn.setLocalDescription(answer).then(() => {
+                            socket.emit('signal', { to: fromId, signal: { sdp: conn.localDescription } });
+                        });
+                    }
+                });
+        } else if (signal.candidate) {
+            conn.addIceCandidate(new RTCIceCandidate(signal.candidate)).catch(e => console.error(e));
+        }
+    },
+
+    send(targetId, payload) {
+        const peer = this.peers[targetId];
+        if (peer && peer.channel && peer.channel.readyState === 'open') {
+            peer.channel.send(JSON.stringify({ type: 'chat', payload }));
+            return true;
+        }
+        return false;
+    },
+
+    closePeer(targetId) {
+        if (this.peers[targetId]) {
+            this.peers[targetId].conn.close();
+            delete this.peers[targetId];
+        }
+    }
+};
+
+// --- LOGGING --- (Helper to hook into socket receive logic if mostly same)
+function onReceiveMessage(msg) {
+    // This calls the existing socket.on('receiveMessage') logic?
+    // That logic is huge and inline. I should extract it.
+    // OR I can just emit a fake socket event locally?
+    // socket.listeners('receiveMessage')... tricky.
+    // I will extract 'receiveMessage' logic to a shared function `handleMsg`.
+    handleIncomingMessage(msg);
+}
+
+// ... existing code ...
+async function performLogin(username, existingId = null, restoreKeys = null) {
     loginBtn.disabled = true;
-    loginBtn.innerHTML = '<span class="btn-icon">⏳</span> Generating Keys...';
+    loginBtn.innerHTML = '<span class="btn-icon">⏳</span> Connecting...';
 
     try {
-        await Crypto.init();
+        if (restoreKeys) {
+            await Crypto.importSessionKeys(restoreKeys);
+        } else {
+            await Crypto.init();
+        }
+
         const publicKey = await Crypto.getPublicKeyBase64();
 
         // Start IPFS in background
         updateIPFSStatus('initializing');
         IPFS.init();
 
-        socket.emit('login', { username, publicKey });
+        socket.emit('login', { username, publicKey, existingId });
     } catch (err) {
-        console.error("Crypto Error:", err);
-        loginError.textContent = "Security initialization failed.";
+        console.error("Crypto/Login Error:", err);
+        loginError.textContent = "Initialization failed.";
         loginBtn.disabled = false;
         loginBtn.textContent = "Enter as Guest";
     }
+}
+
+// Auto-Restore Session on Load
+window.addEventListener('DOMContentLoaded', async () => {
+    const savedSession = sessionStorage.getItem('anonSession');
+    if (savedSession) {
+        try {
+            const session = JSON.parse(savedSession);
+            console.log("Found saved session:", session.username);
+            usernameInput.value = session.username; // Pre-fill
+
+            // Auto Login
+            await performLogin(session.username, session.id, session.keys);
+        } catch (e) {
+            console.error("Failed to restore session", e);
+            sessionStorage.removeItem('anonSession');
+        }
+    }
 });
 
-socket.on('loginSuccess', (userData) => {
+loginBtn.addEventListener('click', async () => {
+    const username = usernameInput.value.trim();
+    if (username.length < 3) {
+        loginError.textContent = "Username must be at least 3 characters.";
+        return;
+    }
+    await performLogin(username);
+});
+
+socket.on('loginSuccess', async (userData) => {
     currentUser = userData;
     currentUserIdEl.textContent = userData.id;
+
+    // Save Session
+    const keys = await Crypto.exportSessionKeys();
+    sessionStorage.setItem('anonSession', JSON.stringify({
+        id: userData.id,
+        username: userData.username,
+        keys: keys
+    }));
 
     // Smooth Transition
     landingPage.classList.add('fade-out');
@@ -298,6 +485,9 @@ socket.on('loginSuccess', (userData) => {
         landingPage.classList.remove('fade-out'); // Reset for potential logout
         dashboardPage.classList.remove('hidden');
     }, 500); // 0.5s matches CSS animation duration
+
+    // Phase 3: Start Anonymity Traffic
+    startDummyTraffic();
 });
 
 socket.on('error', (msg) => {
@@ -353,7 +543,8 @@ const dmList = document.getElementById('dm-list');
 
 // ...
 
-socket.on('receiveMessage', async (msg) => {
+// Separate handler for incoming messages (used by both Socket and WebRTC)
+async function handleIncomingMessage(msg) {
     let chatKey;
     let finalMsg = msg;
 
@@ -367,29 +558,18 @@ socket.on('receiveMessage', async (msg) => {
     }
 
     if (finalMsg.isPrivate) {
-        // Private: Key is the 'Other Person'
-        // If I sent it, msg.senderId is Me. msg.room is recipient.
-        // If I received it, msg.senderId is sender.
         chatKey = finalMsg.senderId === currentUser.id ? finalMsg.room : finalMsg.senderId;
 
-        // Store in history (Decrypted version if success)
         if (!chatHistory[chatKey]) chatHistory[chatKey] = [];
         chatHistory[chatKey].push(finalMsg);
 
         const PARTNER_NAME = finalMsg.senderName;
-
-        // Add to Direct Messages in Sidebar
         addDMToList(chatKey, PARTNER_NAME);
 
         if (currentContext.type === 'private' && currentContext.id === chatKey) {
-            // Check self to avoid duplication if we already added it optimistically
-            if (!finalMsg.self) {
-                addMessage(finalMsg);
-            }
+            if (!finalMsg.self) addMessage(finalMsg);
         } else {
-            // Background notification
             const dmItem = document.querySelector(`.dm-item[data-id="${chatKey}"]`);
-
             if (dmItem) {
                 let badge = dmItem.querySelector('.notification-badge');
                 if (!badge) {
@@ -403,7 +583,6 @@ socket.on('receiveMessage', async (msg) => {
             }
         }
     } else {
-        // Group message
         chatKey = finalMsg.room;
         if (!chatHistory[chatKey]) chatHistory[chatKey] = [];
         chatHistory[chatKey].push(finalMsg);
@@ -412,7 +591,34 @@ socket.on('receiveMessage', async (msg) => {
             addMessage(finalMsg);
         }
     }
+}
+
+socket.on('receiveMessage', handleIncomingMessage);
+
+socket.on('signal', (data) => {
+    WebRTC.handleSignal(data.from, data.signal);
 });
+
+// --- DUMMY TRAFFIC (Phase 3) ---
+function startDummyTraffic() {
+    setInterval(() => {
+        if (!currentUser) return;
+        // Send a fake encrypted packet to a random ID
+        // In real world, we'd send to server to relay to random.
+        // Here we just emit a 'dummy' event to keep connection active/noisy
+        const dummyPayload = new Uint8Array(256); // 256 bytes noise
+        window.crypto.getRandomValues(dummyPayload);
+
+        // We use a custom event that server ignores or logs
+        // Or we could send a 'sendMessage' to a non-existent room to look real?
+        // Let's send a 'ping' frame disguised as data
+        socket.emit('dummy', {
+            data: Array.from(dummyPayload), // JSON overhead, but fine for prototype
+            timestamp: Date.now()
+        });
+        // console.log("Sent dummy traffic");
+    }, 45000 + Math.random() * 30000); // Every 45-75 seconds
+}
 
 function addDMToList(id, name) {
     // Check if exists
@@ -515,22 +721,53 @@ async function sendMessage() {
             const cid = await IPFS.addMessage(encrypted);
 
             // Optimistic UI: Display plaintext message immediately
-            addMessage({
+            const sentMsg = {
                 senderId: currentUser.id,
                 senderName: currentUser.username,
-                text: text,
+                text: text, // Plaintext for self
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 ipfsCid: cid,
-                isPrivate: true
-            });
+                isPrivate: true,
+                room: recipientId,
+                isSecure: true,
+                self: true
+            };
+            addMessage(sentMsg);
+            // Save to history self
+            if (!chatHistory[recipientId]) chatHistory[recipientId] = [];
+            chatHistory[recipientId].push(sentMsg);
 
-            socket.emit('sendMessage', {
-                recipientId: recipientId,
-                message: encrypted, // Sending Object { iv, content } (Fast path)
-                ipfsCid: cid, // Decentralized Backup
-                type: 'private',
-                isSecure: true
-            });
+
+            const payload = {
+                senderId: currentUser.id,
+                senderName: currentUser.username,
+                text: encrypted, // Encrypted for wire
+                ipfsCid: cid,
+                time: sentMsg.time,
+                room: recipientId, // For receiver, room is me (sender)? No, logic is tricky.
+                // In socket logic: io.to(recipient).emit(..., { ...msgData, isPrivate: true })
+                // msgData.room is recipientId.
+                isPrivate: true,
+                isSecure: true,
+                self: false
+            };
+
+            // TRY WEBRTC FIRST
+            if (WebRTC.send(recipientId, payload)) {
+                console.log("Sent via P2P");
+            } else {
+                console.log("Fallback to Relay");
+                // Fallback to socket
+                socket.emit('sendMessage', {
+                    recipientId: recipientId,
+                    message: encrypted,
+                    ipfsCid: cid,
+                    type: 'private',
+                    isSecure: true
+                });
+            }
+            // Init peer for future if not exists
+            WebRTC.initPeer(recipientId, true);
 
             messageInput.value = '';
 

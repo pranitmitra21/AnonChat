@@ -2,6 +2,9 @@
   "name": "anonchat-vanilla",
   "version": "1.0.0",
   "description": "Anonymous Chat Application",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
