@@ -13,6 +13,8 @@ const loginError = document.getElementById('login-error');
 const logoutBtn = document.getElementById('logout-btn');
 
 const currentUserIdEl = document.getElementById('current-user-id');
+// Track Private Groups (e.g. Group#1234)
+const privateGroups = new Set();
 const groupList = document.getElementById('group-list');
 const messageContainer = document.getElementById('message-container');
 const messageInput = document.getElementById('message-input');
@@ -500,12 +502,16 @@ function saveChatSession() {
 
     // Save DM List (Set -> Array)
     sessionStorage.setItem('anonDMs', JSON.stringify(Array.from(privateChats)));
+
+    // Save Private Groups (Set -> Array)
+    sessionStorage.setItem('anonGroups', JSON.stringify(Array.from(privateGroups)));
 }
 
 function restoreChatSession() {
     try {
         const savedHistory = sessionStorage.getItem('anonHistory');
         const savedDMs = sessionStorage.getItem('anonDMs');
+        const savedGroups = sessionStorage.getItem('anonGroups');
 
         if (savedHistory) {
             const parsed = JSON.parse(savedHistory);
@@ -518,8 +524,22 @@ function restoreChatSession() {
             parsed.forEach(id => {
                 privateChats.add(id);
                 // FIX: Always use ID as the display name to ensure consistency with active session
-                // Previously we extracted 'senderName' which broke the Name#ID format on refresh
                 addDMToList(id, id);
+            });
+        }
+
+        if (savedGroups) {
+            const parsed = JSON.parse(savedGroups);
+            parsed.forEach(groupId => {
+                // Restore group to sidebar
+                if (!privateGroups.has(groupId)) {
+                    privateGroups.add(groupId);
+                    const li = document.createElement('li');
+                    li.classList.add('group-item');
+                    li.setAttribute('data-room', groupId);
+                    li.textContent = groupId; // Group#ID
+                    groupList.appendChild(li);
+                }
             });
         }
     } catch (e) {
@@ -937,6 +957,10 @@ inviteBtn.addEventListener('click', () => {
             groupList.appendChild(li);
         }
 
+        // Track and Save
+        privateGroups.add(groupName);
+        saveChatSession();
+
         switchChat('group', groupName, groupName);
 
         // Update UI
@@ -976,6 +1000,10 @@ socket.on('groupCreated', (groupData) => {
     li.setAttribute('data-room', groupData.id);
     li.textContent = groupData.name;
     groupList.appendChild(li);
+
+    // Track and Save
+    privateGroups.add(groupData.id);
+    saveChatSession();
 
     switchChat('group', groupData.id, groupData.name);
 
