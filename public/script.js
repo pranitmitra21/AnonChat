@@ -517,16 +517,9 @@ function restoreChatSession() {
             const parsed = JSON.parse(savedDMs);
             parsed.forEach(id => {
                 privateChats.add(id);
-                // We don't know the name from just the ID list, 
-                // but we can try to find it in the history if available
-                let name = id;
-                if (chatHistory[id] && chatHistory[id].length > 0) {
-                    // Find a message where sender is NOT us to get their name
-                    const msg = chatHistory[id].find(m => m.senderId === id);
-                    if (msg) name = msg.senderName;
-                }
-                // If we still don't have a name, use ID (consistent with previous fix)
-                addDMToList(id, name === id ? id : name);
+                // FIX: Always use ID as the display name to ensure consistency with active session
+                // Previously we extracted 'senderName' which broke the Name#ID format on refresh
+                addDMToList(id, id);
             });
         }
     } catch (e) {
