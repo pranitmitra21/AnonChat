@@ -771,7 +771,7 @@ async function sendMessage() {
             // Optimistic UI: Display plaintext message immediately
             const sentMsg = {
                 senderId: currentUser.id,
-                senderName: currentUser.username,
+                senderName: currentUser.id, // FIX: Use full ID locally
                 text: text, // Plaintext for self
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 ipfsCid: cid,
@@ -791,7 +791,7 @@ async function sendMessage() {
 
             const payload = {
                 senderId: currentUser.id,
-                senderName: currentUser.username,
+                senderName: currentUser.id, // FIX: Use full ID for WebRTC/P2P
                 text: encrypted, // Encrypted for wire
                 ipfsCid: cid,
                 time: sentMsg.time,
