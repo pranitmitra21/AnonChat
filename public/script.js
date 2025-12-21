@@ -563,18 +563,9 @@ async function handleIncomingMessage(msg) {
         if (!chatHistory[chatKey]) chatHistory[chatKey] = [];
         chatHistory[chatKey].push(finalMsg);
 
-        // FIX: If self message, we don't use senderName (which is us).
-        // We try to find the Partner Name.
-        let PARTNER_NAME = finalMsg.senderName;
-        if (finalMsg.self) {
-            // We are the sender. The partner is 'chatKey'.
-            // If we have a better name stored in a "contacts" object, use it.
-            // For now, if we don't know the name, we show the ID.
-            // But if we are in the chat context with them, we might know the name?
-            // Simple fallback: Use ID (chatKey) if self, unless we verify otherwise.
-            // Ideally we passed 'recipientName' in msgData but we didn't.
-            PARTNER_NAME = chatKey;
-        }
+        // FIX: Always use the chatKey (Unique ID: Username#XXXXX) as the display name.
+        // This ensures both sender and receiver see "Name#ID" in the sidebar/header.
+        const PARTNER_NAME = chatKey;
 
         addDMToList(chatKey, PARTNER_NAME);
 
